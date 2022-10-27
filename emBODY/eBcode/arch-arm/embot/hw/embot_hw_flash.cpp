@@ -80,6 +80,7 @@ namespace embot { namespace hw { namespace flash {
 
 #else
 
+
 namespace embot { namespace hw { namespace flash {
     
     const Partition& getpartition(embot::hw::FLASH fl)
@@ -139,16 +140,30 @@ namespace embot { namespace hw { namespace flash {
             return false;
         }
         
-        FLASH_EraseInitTypeDef erase = {0};
-        erase.TypeErase = FLASH_TYPEERASE_PAGES;
-        erase.Banks = FLASH_BANK_1;
-        erase.Page = page;
-        erase.NbPages = 1;
-        uint32_t pagenum = 0;
+        /* Unlock the Flash to enable the flash control register access */
         HAL_FLASH_Unlock();
-        HAL_StatusTypeDef r = HAL_FLASHEx_Erase(&erase, &pagenum);
+        
+        FLASH_EraseInitTypeDef erase = {0};
+        erase.TypeErase = FLASH_TYPEERASE_SECTORS;
+        erase.Banks = FLASH_BANK_1;
+        erase.Sector = page;    // TODO: change the name "page" into "sector"
+        erase.NbSectors = 1;
+        erase.VoltageRange = FLASH_VOLTAGE_RANGE_3;
+        uint32_t eraseErrorIndex = 0;
+        
+        //__HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_PGSERR);
+        clearFlashFlag();
+
+        HAL_StatusTypeDef r = HAL_FLASHEx_Erase(&erase, &eraseErrorIndex);
+
         HAL_FLASH_Lock();
-        return (HAL_OK == r) ? true : false;                
+        
+        if(HAL_OK != r)
+        {
+            uint32_t error_code = HAL_FLASH_GetError();
+        }
+        
+        return (HAL_OK == r) ? true : false;
     }
     
     bool erase(std::uint32_t address, std::uint32_t size)
@@ -195,9 +210,24 @@ namespace embot { namespace hw { namespace flash {
             return false;
         }
         
+        HAL_FLASH_Unlock();
+ 
+ #if 0
+ // as it was       
         // can read directly from flash
         void *st = (void*) address;
         std::memmove(data, st, size); 
+#else        
+        uint64_t *st = (uint64_t*) address;
+        uint64_t *to = (uint64_t*) data;
+        for(uint32_t i=0; i<(size/8); i++)
+        {
+            *to = *st;
+            to++;
+            st++;
+        }
+#endif        
+        HAL_FLASH_Lock();
         
         return true;
     }
@@ -225,15 +255,26 @@ namespace embot { namespace hw { namespace flash {
 
         const embot::hw::Partition part = embot::hw::flash::getpartition(embot::hw::FLASH::whole);
         
-        HAL_FLASH_Unlock();
-    
+//        uint32_t tmpadr = address;
+//        uint32_t n64bitwords = part.maxsize / 8;
+//        const uint64_t *buffer = reinterpret_cast<const std::uint64_t*>(data);
+//        for(uint32_t i=0; i<n64bitwords; i++)
+//        {
+//            HAL_FLASH_Program(FLASH_TYPEPROGRAM_FLASHWORD, tmpadr, buffer[i]);
+//            tmpadr += 8;
+//        }
+
         uint32_t tmpadr = address;
-        uint32_t n64bitwords = part.maxsize / 8;
-        const uint64_t *buffer = reinterpret_cast<const std::uint64_t*>(data);
-        for(uint32_t i=0; i<n64bitwords; i++)
+        uint32_t n256bitwords = 128 ;//part.maxsize / 32;     // TODO: check this operation
+        const uint32_t *buffer = reinterpret_cast<const std::uint32_t*>(data);
+        
+        /* Unlock the Flash to enable the flash control register access */
+        HAL_FLASH_Unlock();
+        
+        for(uint32_t i=0; i<n256bitwords; i++)
         {
-            HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, tmpadr, buffer[i]);
-            tmpadr += 8;
+            HAL_FLASH_Program(FLASH_TYPEPROGRAM_FLASHWORD, tmpadr, (uint32_t)&buffer[i]);
+            tmpadr += 32;
         }
 
         volatile uint32_t r =  HAL_FLASH_GetError();

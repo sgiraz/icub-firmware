@@ -51,6 +51,12 @@
 #include "stm32h7xx.h"
 #include <math.h>
 
+// TODO: remove
+void clearFlashFlag()
+{
+    __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_PGSERR);
+}
+
 #if !defined  (HSE_VALUE)
 #define HSE_VALUE    ((uint32_t)25000000) /*!< Value of the External oscillator in Hz */
 #endif /* HSE_VALUE */

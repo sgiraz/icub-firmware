@@ -43,17 +43,17 @@ constexpr embot::core::relTime tickperiod = 1000*embot::core::time1millisec;
 
 //#define TEST_EMBOT_HW_ENCODER
 //#define TEST_EMBOT_HW_CHIP_AS5045
-#define TEST_EMBOT_HW_CHIP_MB049
+//#define TEST_EMBOT_HW_CHIP_MB049
 
-//#define TEST_EMBOT_HW_FLASH
+#define TEST_EMBOT_HW_FLASH
 
-#define TEST_EMBOT_HW_CAN
+//#define TEST_EMBOT_HW_CAN
 
 //#define TEST_EMBOT_HW_CAN_loopback_can1_to_can2_to_can1
 //#define TEST_EMBOT_HW_CAN_loopback_can1_to_can2_to_can1_BURST
 //#define TEST_EMBOT_HW_CAN_gateway_CAN2toCAN1
 //#define TEST_EMBOT_HW_CAN_gateway_CAN1toCAN2
-#define TEST_EMBOT_HW_CAN_BURST
+//#define TEST_EMBOT_HW_CAN_BURST
 
 //# define TEST_EMBOT_HW_TIMER
 
@@ -864,42 +864,71 @@ embot::core::Time writetime {0};
 embot::core::Time erasetime {0};
 embot::core::Time start{0};
 
-constexpr uint64_t d2flash[1024/8] =
-{
-    0x1122334455667788,
-    0x99aabbccddeeff00,
-    0x1122334455667788,
-    0x99aabbccddeeff00,
-    0x1122334455667788,
-    0x99aabbccddeeff00,
-    0x1122334455667788,
-    0x99aabbccddeeff00    
-};
+//constexpr uint64_t d2flash[1024/8] =
+//{
+//    0x1122334455667788,
+//    0x99aabbccddeeff00,
+//    0x1122334455667788,
+//    0x99aabbccddeeff00,
+//    0x1122334455667788,
+//    0x99aabbccddeeff00,
+//    0x1122334455667788,
+//    0x99aabbccddeeff00    
+//};
+
+uint32_t d2flash[1024/4] = {0};   // 1KB
+uint32_t readback[1024/4] = {0};  // 1KB
 
 #endif
 
+extern "C"
+{
+    void HardFault_Handler()
+    {
+        static volatile uint32_t x = 0;
+    }
+}
+
 void test_embot_hw_tick()
 {
+
     static uint8_t cnt = 0;
-    cnt++;
+    static uint8_t tmp_data = 0x20;
+    
     
 #if defined(TEST_EMBOT_HW_FLASH)
+    if (0 == cnt % 5)
+    {
     const embot::hw::flash::BSP &flashbsp = embot::hw::flash::getBSP();
-    size_t adrflash = flashbsp.getPROP(embot::hw::FLASH::eapplication01)->partition.address;
-    size_t sizeflash = flashbsp.getPROP(embot::hw::FLASH::eapplication01)->partition.maxsize;
+    size_t adrflash = flashbsp.getPROP(embot::hw::FLASH::eapplication00)->partition.address;
+    size_t sizeflash = flashbsp.getPROP(embot::hw::FLASH::eapplication00)->partition.maxsize;
     
-    start = embot::core::now();    
+    std::memset(readback, 0, sizeof(readback));
+    embot::hw::flash::read(adrflash, sizeof(readback), readback);
+    
+    start = embot::core::now();
     embot::hw::flash::erase(adrflash, sizeflash);
     erasetime = embot::core::now() - start;
 
-    start = embot::core::now();    
+    std::memset(d2flash, tmp_data++, sizeof(d2flash));
+    start = embot::core::now();
     embot::hw::flash::write(adrflash, sizeof(d2flash), d2flash);
     writetime = embot::core::now() - start;
 //    embot::hw::flash::write(adrflash+2*sizeof(d2flash), sizeof(d2flash), d2flash);
 //    embot::hw::flash::write(adrflash+3*sizeof(d2flash), sizeof(d2flash), d2flash);
     
+    std::memset(readback, 0, sizeof(readback));
+    
+    embot::hw::flash::read(adrflash, sizeof(readback), readback);
+    
     embot::core::print(std::string("erased sector + written: ") + std::to_string(sizeof(d2flash)) + ". erase time = " + embot::core::TimeFormatter(erasetime).to_string() + ", write time = " + embot::core::TimeFormatter(writetime).to_string());
- 
+
+    }
+    else
+    {
+        embot::core::print("tick number: " + std::to_string(cnt));
+    }
+    cnt++;
 #endif    
     
     

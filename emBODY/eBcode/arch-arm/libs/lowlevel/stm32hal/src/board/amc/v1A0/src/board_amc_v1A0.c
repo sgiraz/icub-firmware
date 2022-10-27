@@ -96,10 +96,10 @@ extern void stm32hal_board_init(void)
   MPU_Config();
 
   /* Enable I-Cache---------------------------------------------------------*/
-  SCB_EnableICache();
+//  SCB_EnableICache();
 
   /* Enable D-Cache---------------------------------------------------------*/
-  SCB_EnableDCache();
+//  SCB_EnableDCache();
 
     // marco.accame: we must not wait for the second mpu if we dont use it
     // if we waited, then the Error_Handler() would trigger because CPU2 does not run
