@@ -68,7 +68,6 @@ void PID_config(PID* o, eOmc_PID_t* config)
     
     o->Kff = rescaler*config->kff;
     
-    o->Kbemf = 0.0f;
     o->Ktau  = 0.0f;
     
     o->Dn = 0.0f;
@@ -108,11 +107,9 @@ void PID_config(PID* o, eOmc_PID_t* config)
     
 }
 
-void PID_config_friction(PID *o, float Kbemf, float Ktau, eOmc_FrictionParams_t friction)
+void PID_config_friction(PID *o, float Ktau, eOmc_FrictionParams_t friction)
 {
-    o->Kbemf = Kbemf;
     o->Ktau  = Ktau;
-    // Printa ktau
     o->viscous_pos_val = friction.viscous_pos_val;
     o->viscous_neg_val = friction.viscous_neg_val;
     o->coulomb_pos_val = friction.coulomb_pos_val;
