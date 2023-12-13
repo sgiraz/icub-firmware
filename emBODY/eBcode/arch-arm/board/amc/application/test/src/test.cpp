@@ -19,6 +19,11 @@
 #include "embot_prot_can.h"
 #include "embot_app_theLEDmanager.h"
 
+
+#include "embot_hw_spi.h"
+#include "embot_hw_encoder.h"
+#include "embot_hw_chip_AS5045.h"
+
 namespace test::can { 
     
     constexpr embot::hw::CAN bus {embot::hw::CAN::one};
@@ -141,14 +146,63 @@ namespace test::can {
         
     }   
 
-}        
+}  // test::can
+
+
+namespace test::encoder {
+    
+    uint16_t posONE, posTWO, posTHREE = 0;
+    embot::hw::ENCODER encoder_ONE = embot::hw::ENCODER::one;
+    embot::hw::ENCODER encoder_TWO = embot::hw::ENCODER::two;
+    embot::hw::ENCODER encoder_THREE = embot::hw::ENCODER::three;
+    
+    void init()
+    {
+        // configure SPI
+        embot::hw::encoder::Config cfgONE   { .type = embot::hw::encoder::Type::chipAS5045 };
+        embot::hw::encoder::Config cfgTWO   { .type = embot::hw::encoder::Type::chipAS5045 };
+        embot::hw::encoder::Config cfgTHREE { .type = embot::hw::encoder::Type::chipAS5045 };
+        
+        // init the encoder(s)
+        embot::hw::encoder::init(encoder_ONE, cfgONE);
+        embot::hw::encoder::init(encoder_TWO, cfgTWO);
+        embot::hw::encoder::init(encoder_THREE, cfgTHREE);
+    }
+    
+    void tick()
+    {
+        // start the encoder reading
+        embot::hw::encoder::startRead(encoder_ONE);
+        embot::hw::encoder::startRead(encoder_TWO);
+        embot::hw::encoder::startRead(encoder_THREE);
+                
+        for(;;)
+        {
+            // try to get the value read when the data is ready
+            if(embot::hw::resOK == embot::hw::encoder::getValue(encoder_ONE, posONE) &&
+               embot::hw::resOK == embot::hw::encoder::getValue(encoder_TWO, posTWO) &&
+               embot::hw::resOK == embot::hw::encoder::getValue(encoder_THREE, posTHREE))
+            {
+                embot::os::Thread *thr {embot::os::theScheduler::getInstance().scheduled()};
+                embot::app::eth::theErrorManager::getInstance().emit(embot::app::eth::theErrorManager::Severity::debug,
+                                                                     {"test::encoder::tick()", thr},
+                                                                     {0, 0, 0},
+                                                                     std::to_string(posONE) + " | " + std::to_string(posTWO) + " | " + std::to_string(posTHREE));
+                break;
+            }
+        }
+    }
+    
+} //test::encoder
 
 
 namespace test::any {
     
     void init()
     {
-        test::can::init();            
+        test::can::init();
+        
+        test::encoder::init();
     }
 
     void deinit()
@@ -163,7 +217,8 @@ namespace test::any {
         embot::app::eth::theErrorManager::getInstance().emit(embot::app::eth::theErrorManager::Severity::trace, {"test::any::tick()", thr}, {}, "just called");
         
         test::can::tick(tt);
-
+        
+        test::encoder::tick();
     }
 
 }

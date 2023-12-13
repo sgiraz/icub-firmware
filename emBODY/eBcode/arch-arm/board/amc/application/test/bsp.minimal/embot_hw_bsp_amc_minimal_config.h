@@ -28,7 +28,7 @@
 
     #define EMBOT_ENABLE_hw_spi
     
-//    #define EMBOT_ENABLE_hw_encoder
+    #define EMBOT_ENABLE_hw_encoder
     
 
     #define EMBOT_ENABLE_hw_can
