@@ -73,7 +73,7 @@ constexpr embot::hw::Config hwCFG {nullptr, get1microtime2};
 // if defined it forces tge eeprom to have def2run = application, so that the eupdater will jump to application 
 #undef DEBUG_forceEEPROM_DEF2RUNequalAPPLICATION
 // if defined it does not jump and forces execution of defaultapplication() 
-#undef DEBUG_stayinhere
+#define DEBUG_stayinhere
 // if defined it enables the CM4 core after clock initialization inside embot::hw::init()
 #undef DEBUG_startCM4now
 
@@ -112,6 +112,7 @@ int main(void)
     {
         embot::core::wait(blinkrate);        
         embot::hw::led::toggle(embot::hw::LED::one);
+        embot::core::print("ciao");
     }  
 }
 
